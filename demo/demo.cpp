@@ -71,21 +71,21 @@ int SURF_test_case(string path);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 //system parameters
-unsigned long RESERVE = 270;//number of images to build vocabulary
+unsigned long RESERVE = 0;//number of images to build vocabulary
 unsigned long NIMAGE = 0;//number of images in the train folder
 int HESSIAN = 400;
 int K = 8;
 int L = 3;
-
+size_t NUM_DESCRIPTORS = 0;
 // extended surf gives 128-dimensional vectors
 const bool EXTENDED_SURF = false;
 
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 //file paths
-string TRAINFOLDER = "/Users/henryliu/Downloads/out";
-string TESTFOLDER = "/Users/henryliu/Downloads/cbir_test_folder";
-string STOREPATH = "/Users/henryliu/Documents/DBoW2-master/demo/";
+string TRAINFOLDER = "/Users/liuhengyue/Downloads/out";
+string TESTFOLDER = "/Users/liuhengyue/Downloads/cbir_test_folder";
+string STOREPATH = "/Users/liuhengyue/Downloads/results/";
 string DBEXT = "kohls_db.yml.gz";
 string LABELEXT = "kohls_labels.yml";
 string VOCEXT = "kohls_voc.yml.gz";
@@ -105,19 +105,21 @@ int main()
     vector<vector<vector<float> > > features2;
     vector<cv::String> reference2;
     //extract test image features
-    loadFeatures(features2, reference2, TESTFOLDER);
+    loadAll(features2, reference2, TESTFOLDER);
     //NIMAGE = check_files_num(TRAINFOLDER);
     vector<vector<vector<float> > > features;
     vector<cv::String> reference;
-    loadAll(features, reference, TRAINFOLDER);
     //for(RESERVE = 20; RESERVE < 2041; RESERVE +=50){
-    for(RESERVE = 270; RESERVE < 2041; RESERVE +=50){
+    for(RESERVE = 970; RESERVE < 2041; RESERVE +=500){
         //Extract train features and build vocabulary -- trainning part
-        loadFeatures(features, reference, TRAINFOLDER);
+//        loadFeatures(features, reference, TRAINFOLDER);
 //        for(K = 17; K < 21; K += 2){
 //            for (L = 2; L < 14; L ++){
-        for(K = 5; K < 21; K += 2){
-            for (L = 2; L < 14; L ++){
+        loadAll(features, reference, TRAINFOLDER);
+        cout<<"look here "<<features.size()<<endl;
+        
+        for(K = 11; K < 21; K += 2){
+            for (L = 3; L < 14; L ++){
                 //check if the database exits
                 if(!file_exit(toString(STOREPATH, DBEXT))){
                     try {
@@ -140,6 +142,7 @@ int main()
 
             }
         }
+        NUM_DESCRIPTORS = 0;
         //clean up
         //features.clear();
         //reference.clear();
@@ -208,7 +211,7 @@ void loadFeatures(vector<vector<vector<float> > > &features, vector<cv::String>&
 
 void loadAll(vector<vector<vector<float> > > &features, vector<cv::String>& reference, cv::String trainFolder)
 {
-    //    features.clear();
+    features.clear();
     //    features.reserve(RESERVE);
     features.reserve(RESERVE);
     cv::Ptr<cv::xfeatures2d::SURF> surf = cv::xfeatures2d::SURF::create(HESSIAN, 4, 2, EXTENDED_SURF);
@@ -229,8 +232,7 @@ void loadAll(vector<vector<vector<float> > > &features, vector<cv::String>& refe
         cout << "Error (" << errno << "): Unable to open " << trainFolder << endl;
         return;
     }
-    int count = 0;
-    while ((dirp = readdir(dp)) && count < RESERVE - 50) {
+    while ((dirp = readdir(dp))) {
         filepath = trainFolder + "/" + dirp->d_name;
         
         if (stat(filepath.c_str(), &filestat)) continue;
@@ -251,9 +253,8 @@ void loadAll(vector<vector<vector<float> > > &features, vector<cv::String>& refe
         if(descriptors.empty()) continue;
         features.push_back(vector<vector<float> >());
         changeStructure(descriptors, features.back(), surf->descriptorSize());
-
-        count++;
-        cout<<count<<endl;
+        NUM_DESCRIPTORS += descriptors.size();
+        //cout<<count<<endl;
     }
     //change the capacity to actual size
     features.shrink_to_fit();
@@ -372,7 +373,7 @@ void testDatabase(const vector<vector<vector<float> > > &features)
     fstream logfs;
     if(!file_exit(STOREPATH+LOG)){
         logfs.open((STOREPATH+LOG), ios_base::out | ios_base::app);
-        logfs << "# of images, Hessian, branch, depth, best matched image, best score, second best matched image, second best score, diff"<<endl;
+        logfs << "# of images, # of descriptors, Hessian, branch, depth, best matched image, best score, second best matched image, second best score, diff"<<endl;
     }
     else logfs.open((STOREPATH+LOG), ios_base::out | ios_base::app);
     
@@ -411,7 +412,7 @@ void testDatabase(const vector<vector<vector<float> > > &features)
 //            cout << reference[ret[3].Id] << endl;
 //            cout << reference[ret[4].Id] << endl;
 //            cout<<RESERVE << ", " << HESSIAN << ", " << K << ", " << L << ", " << reference[ret[0].Id] << ", " << ret[0].Score << ", " << reference[ret[1].Id] << ", " << ret[1].Score << endl;
-            logfs << RESERVE << ", " << HESSIAN << ", " << K << ", " << L << ", " << reference[ret[0].Id] << ", " << ret[0].Score << ", " << reference[ret[1].Id] << ", " << ret[1].Score <<", "<< ret[0].Score - ret[1].Score << endl;
+            logfs << RESERVE << ", " << NUM_DESCRIPTORS  << ", " << HESSIAN << ", " << K << ", " << L << ", " << reference[ret[0].Id] << ", " << ret[0].Score << ", " << reference[ret[1].Id] << ", " << ret[1].Score <<", "<< ret[0].Score - ret[1].Score << endl;
         }
     }
     
