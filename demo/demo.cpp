@@ -83,9 +83,10 @@ const bool EXTENDED_SURF = false;
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 //file paths
-string TRAINFOLDER = "/Users/liuhengyue/Downloads/out";
-string TESTFOLDER = "/Users/liuhengyue/Downloads/cbir_test_folder";
-string STOREPATH = "/Users/liuhengyue/Downloads/results/";
+string TRAINFOLDER = "/Users/henryliu/Downloads/out";
+string TRAINFOLDER2 = "/Users/henryliu/Downloads/images";
+string TESTFOLDER = "/Users/henryliu/Downloads/cbir_test_folder";
+string STOREPATH = "/Users/henryliu/Documents/DBoW2-master/demo/";
 string DBEXT = "kohls_db.yml.gz";
 string LABELEXT = "kohls_labels.yml";
 string VOCEXT = "kohls_voc.yml.gz";
@@ -105,19 +106,18 @@ int main()
     vector<vector<vector<float> > > features2;
     vector<cv::String> reference2;
     //extract test image features
-    loadAll(features2, reference2, TESTFOLDER);
+    loadFeatures(features2, reference2, TESTFOLDER);
     //NIMAGE = check_files_num(TRAINFOLDER);
     vector<vector<vector<float> > > features;
     vector<cv::String> reference;
-    //for(RESERVE = 20; RESERVE < 2041; RESERVE +=50){
-    for(RESERVE = 970; RESERVE < 2041; RESERVE +=500){
+    //for(RESERVE = 20; RESERVE < 571; RESERVE +=50){
+    for(RESERVE = 4000; RESERVE < 4001; RESERVE +=500){
         //Extract train features and build vocabulary -- trainning part
 //        loadFeatures(features, reference, TRAINFOLDER);
 //        for(K = 17; K < 21; K += 2){
 //            for (L = 2; L < 14; L ++){
         loadAll(features, reference, TRAINFOLDER);
-        cout<<"look here "<<features.size()<<endl;
-        
+        loadFeatures(features, reference, TRAINFOLDER2);
         for(K = 11; K < 21; K += 2){
             for (L = 3; L < 14; L ++){
                 //check if the database exits
@@ -156,66 +156,9 @@ void loadFeatures(vector<vector<vector<float> > > &features, vector<cv::String>&
 {
 //    features.clear();
 //    features.reserve(RESERVE);
-    features.reserve(RESERVE);
+//    features.reserve(RESERVE);
     cv::Ptr<cv::xfeatures2d::SURF> surf = cv::xfeatures2d::SURF::create(HESSIAN, 4, 2, EXTENDED_SURF);
 
-    
-    cout << "Extracting SURF features..." << endl;
-    DIR *dp;
-    struct dirent *dirp;
-    struct stat filestat;
-    cv::String filepath;
-    vector<cv::String> broken;
-    
-    
-    //Asumming query images are in a folder
-    dp = opendir(trainFolder.c_str());
-    
-    if (dp == NULL){
-        cout << "Error (" << errno << "): Unable to open " << trainFolder << endl;
-        return;
-    }
-    int count = 0;
-    while ((dirp = readdir(dp)) && count < RESERVE) {
-        filepath = trainFolder + "/" + dirp->d_name;
-        
-        if (stat(filepath.c_str(), &filestat)) continue;
-        if(dirp->d_name[0] == '.') continue;
-        
-        cout << filepath << endl;
-        cv::Mat image = cv::imread(filepath, CV_8U); //Use this if query images are passed directly
-        if(image.data==NULL) {
-            broken.push_back(dirp->d_name);
-            continue;
-        }
-        if(count > RESERVE-51 || RESERVE == 20){
-            reference.push_back(dirp->d_name);
-            cv::Mat mask;
-            vector<cv::KeyPoint> keypoints;
-            vector<float> descriptors;
-            surf->detectAndCompute(image, mask, keypoints, descriptors);
-            if(descriptors.empty()) continue;
-            features.push_back(vector<vector<float> >());
-            changeStructure(descriptors, features.back(), surf->descriptorSize());
-        }
-        count++;
-    }
-    //change the capacity to actual size
-    features.shrink_to_fit();
-    //NIMAGE = (int)features.size();
-    //
-    //    cv::FileStorage fs("broken_images.yml", cv::FileStorage::WRITE);
-    //    fs << "Image File" << broken;
-    //    fs.release();
-}
-
-void loadAll(vector<vector<vector<float> > > &features, vector<cv::String>& reference, cv::String trainFolder)
-{
-    features.clear();
-    //    features.reserve(RESERVE);
-    features.reserve(RESERVE);
-    cv::Ptr<cv::xfeatures2d::SURF> surf = cv::xfeatures2d::SURF::create(HESSIAN, 4, 2, EXTENDED_SURF);
-    
     
     cout << "Extracting SURF features..." << endl;
     DIR *dp;
@@ -253,7 +196,63 @@ void loadAll(vector<vector<vector<float> > > &features, vector<cv::String>& refe
         if(descriptors.empty()) continue;
         features.push_back(vector<vector<float> >());
         changeStructure(descriptors, features.back(), surf->descriptorSize());
+    }
+    //change the capacity to actual size
+    features.shrink_to_fit();
+    //NIMAGE = (int)features.size();
+    //
+    //    cv::FileStorage fs("broken_images.yml", cv::FileStorage::WRITE);
+    //    fs << "Image File" << broken;
+    //    fs.release();
+}
+
+void loadAll(vector<vector<vector<float> > > &features, vector<cv::String>& reference, cv::String trainFolder)
+{
+    features.clear();
+    //    features.reserve(RESERVE);
+    features.reserve(RESERVE);
+    cv::Ptr<cv::xfeatures2d::SURF> surf = cv::xfeatures2d::SURF::create(HESSIAN, 4, 2, EXTENDED_SURF);
+    
+    
+    cout << "Extracting SURF features..." << endl;
+    DIR *dp;
+    struct dirent *dirp;
+    struct stat filestat;
+    cv::String filepath;
+    vector<cv::String> broken;
+    
+    
+    //Asumming query images are in a folder
+    dp = opendir(trainFolder.c_str());
+    
+    if (dp == NULL){
+        cout << "Error (" << errno << "): Unable to open " << trainFolder << endl;
+        return;
+    }
+    unsigned long count = 0;
+    while ((dirp = readdir(dp)) && count < RESERVE) {
+        filepath = trainFolder + "/" + dirp->d_name;
+        
+        if (stat(filepath.c_str(), &filestat)) continue;
+        if(dirp->d_name[0] == '.') continue;
+        
+        cout << filepath << endl;
+        cv::Mat image = cv::imread(filepath, CV_8U); //Use this if query images are passed directly
+        if(image.data==NULL) {
+            broken.push_back(dirp->d_name);
+            continue;
+        }
+
+        reference.push_back(dirp->d_name);
+        cv::Mat mask;
+        vector<cv::KeyPoint> keypoints;
+        vector<float> descriptors;
+        surf->detectAndCompute(image, mask, keypoints, descriptors);
+        if(descriptors.empty()) continue;
+        features.push_back(vector<vector<float> >());
+        changeStructure(descriptors, features.back(), surf->descriptorSize());
         NUM_DESCRIPTORS += descriptors.size();
+        count++;
         //cout<<count<<endl;
     }
     //change the capacity to actual size
@@ -368,7 +367,6 @@ void testDatabase(const vector<vector<vector<float> > > &features)
     //    cout << "Retrieving database..." << endl;
     //    Surf64Database db("kohls_db.yml.gz");
     //    cout << "..done!" << endl;
-    
     //save log
     fstream logfs;
     if(!file_exit(STOREPATH+LOG)){
@@ -403,7 +401,7 @@ void testDatabase(const vector<vector<vector<float> > > &features)
             logfs << RESERVE << ", " << HESSIAN << ", " << K << ", " << L << ", " << "No image" << ", " << 0 << ", " << "No image" << ", " << 0 << ", " << 0 << endl;
             
         }
-        else
+        else if(reference[ret[0].Id] == "111207.1.jpg")
         {
             cout << "Best matched Image: " << reference[ret[0].Id] << " with a score of "<< ret[0].Score << endl;
             cout << "More matches: " << endl;
@@ -414,8 +412,11 @@ void testDatabase(const vector<vector<vector<float> > > &features)
 //            cout<<RESERVE << ", " << HESSIAN << ", " << K << ", " << L << ", " << reference[ret[0].Id] << ", " << ret[0].Score << ", " << reference[ret[1].Id] << ", " << ret[1].Score << endl;
             logfs << RESERVE << ", " << NUM_DESCRIPTORS  << ", " << HESSIAN << ", " << K << ", " << L << ", " << reference[ret[0].Id] << ", " << ret[0].Score << ", " << reference[ret[1].Id] << ", " << ret[1].Score <<", "<< ret[0].Score - ret[1].Score << endl;
         }
+        else{
+            cout<<"wrong match"<<endl;
+        }
     }
-    
+    logfs.close();
 //    cout << "Saving database... " << endl;
 //    
 //    db.save("/Users/henryliu/Documents/DBoW2-master/demo/kohls_db.yml.gz");
