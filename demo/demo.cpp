@@ -110,19 +110,19 @@ int main()
     vector<vector<vector<float> > > features2;
     vector<cv::String> reference2;
     //extract test image features
-    loadFeatures(features2, reference2, TESTFOLDER, 20);
-    //NIMAGE = check_files_num(TRAINFOLDER);
+        //NIMAGE = check_files_num(TRAINFOLDER);
     vector<vector<vector<float> > > features;
     vector<cv::String> reference;
     //for(RESERVE = 20; RESERVE < 571; RESERVE +=50){
-    for(RESERVE = 100; RESERVE < 101; RESERVE +=500){
+    for(RESERVE = 1500; RESERVE < 2001; RESERVE +=500){
         //Extract train features and build vocabulary -- trainning part
 //        loadFeatures(features, reference, TRAINFOLDER);
 //        for(K = 17; K < 21; K += 2){
 //            for (L = 2; L < 14; L ++){
         loadFeatures(features, reference, TRAINFOLDER);
+        loadFeatures(features2, reference2, TESTFOLDER);
         //loadFeatures(features, reference, TRAINFOLDER2);
-        for(K = 5; K < 21; K += 2){
+        for(K = 11; K < 21; K += 2){
             for (L = 3; L < 14; L ++){
                 //check if the database exits
                 if(!file_exit(toString(STOREPATH, DBEXT))){
@@ -378,7 +378,7 @@ void testDatabase(const vector<vector<vector<float> > > &features, vector<cv::St
     fstream logfs;
     if(!file_exit(STOREPATH+LOG)){
         logfs.open((STOREPATH+LOG), ios_base::out | ios_base::app);
-        logfs << "# of images, # of descriptors, Hessian, branch, depth, best matched image, best score, second best matched image, second best score, diff"<<endl;
+        logfs << "# of images, # of descriptors, Hessian, branch, depth, best matched image, best score, second best matched image, second best score, accuracy"<<endl;
     }
     else logfs.open((STOREPATH+LOG), ios_base::out | ios_base::app);
     
