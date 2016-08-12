@@ -17,8 +17,8 @@
 
 using namespace std;
 using namespace dlib;
-typedef matrix<int,3,1> input_vector;
-typedef matrix<double,4,1> parameter_vector;
+typedef matrix<double,3,1> input_vector;
+typedef matrix<double,5,1> parameter_vector;
 typedef matrix<double,5,1> mlp_vector;
 
 typedef std::vector<std::pair<input_vector, double> > data;

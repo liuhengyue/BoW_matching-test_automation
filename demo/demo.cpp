@@ -88,7 +88,7 @@ int SURF_test_case(string path);
 //file paths
 string TRAINFOLDER = "/Users/henry/Downloads/out";
 string TRAINFOLDER2 = "/Users/henry/Downloads/images";
-string TESTFOLDER = "/Users/henry/Downloads/test_images";
+string TESTFOLDER = "/Users/henry/Downloads/test_images2";
 string STOREPATH = "/Users/henry/Downloads/results/";
 string DBEXT = "kohls_db.yml.gz";
 string LABELEXT = "kohls_labels.yml";
@@ -114,15 +114,17 @@ int main()
     vector<vector<vector<float> > > features;
     vector<cv::String> reference;
     //for(RESERVE = 20; RESERVE < 571; RESERVE +=50){
-    for(RESERVE = 1500; RESERVE < 2001; RESERVE +=500){
+    for(RESERVE = 4000; RESERVE < 4001; RESERVE +=500){
         //Extract train features and build vocabulary -- trainning part
 //        loadFeatures(features, reference, TRAINFOLDER);
 //        for(K = 17; K < 21; K += 2){
 //            for (L = 2; L < 14; L ++){
+        features.reserve(RESERVE);
         loadFeatures(features, reference, TRAINFOLDER);
+        loadFeatures(features, reference, TRAINFOLDER2);
         loadFeatures(features2, reference2, TESTFOLDER);
         //loadFeatures(features, reference, TRAINFOLDER2);
-        for(K = 11; K < 21; K += 2){
+        for(K = 15; K < 21; K += 2){
             for (L = 3; L < 14; L ++){
                 //check if the database exits
                 if(!file_exit(toString(STOREPATH, DBEXT))){
@@ -148,8 +150,8 @@ int main()
         }
         NUM_DESCRIPTORS = 0;
         //clean up
-        //features.clear();
-        //reference.clear();
+        features.clear();
+        reference.clear();
     }
     return 0;
 }
@@ -158,9 +160,6 @@ int main()
 
 void loadFeatures(vector<vector<vector<float> > > &features, vector<cv::String>& reference, cv::String trainFolder, unsigned long num)
 {
-    features.clear();
-//    features.reserve(RESERVE);
-//    features.reserve(RESERVE);
     cv::Ptr<cv::xfeatures2d::SURF> surf = cv::xfeatures2d::SURF::create(HESSIAN, 4, 2, EXTENDED_SURF);
 
     
@@ -186,7 +185,7 @@ void loadFeatures(vector<vector<vector<float> > > &features, vector<cv::String>&
         if (stat(filepath.c_str(), &filestat)) continue;
         if(dirp->d_name[0] == '.') continue;
         
-        cout << filepath << endl;
+        //cout << float(counter+1)*100/RESERVE << "%" << endl;
         cv::Mat image = cv::imread(filepath, CV_8U); //Use this if query images are passed directly
         if(image.data==NULL) {
             broken.push_back(dirp->d_name);
@@ -213,63 +212,63 @@ void loadFeatures(vector<vector<vector<float> > > &features, vector<cv::String>&
     //    fs.release();
 }
 
-void loadAll(vector<vector<vector<float> > > &features, vector<cv::String>& reference, cv::String trainFolder)
-{
-    features.clear();
-    //    features.reserve(RESERVE);
-    features.reserve(RESERVE);
-    cv::Ptr<cv::xfeatures2d::SURF> surf = cv::xfeatures2d::SURF::create(HESSIAN, 4, 2, EXTENDED_SURF);
-    
-    
-    cout << "Extracting SURF features..." << endl;
-    DIR *dp;
-    struct dirent *dirp;
-    struct stat filestat;
-    cv::String filepath;
-    vector<cv::String> broken;
-    
-    
-    //Asumming query images are in a folder
-    dp = opendir(trainFolder.c_str());
-    
-    if (dp == NULL){
-        cout << "Error (" << errno << "): Unable to open " << trainFolder << endl;
-        return;
-    }
-    unsigned long count = 0;
-    while ((dirp = readdir(dp)) && count < RESERVE) {
-        filepath = trainFolder + "/" + dirp->d_name;
-        
-        if (stat(filepath.c_str(), &filestat)) continue;
-        if(dirp->d_name[0] == '.') continue;
-        
-        cout << filepath << endl;
-        cv::Mat image = cv::imread(filepath, CV_8U); //Use this if query images are passed directly
-        if(image.data==NULL) {
-            broken.push_back(dirp->d_name);
-            continue;
-        }
-
-        reference.push_back(dirp->d_name);
-        cv::Mat mask;
-        vector<cv::KeyPoint> keypoints;
-        vector<float> descriptors;
-        surf->detectAndCompute(image, mask, keypoints, descriptors);
-        if(descriptors.empty()) continue;
-        features.push_back(vector<vector<float> >());
-        changeStructure(descriptors, features.back(), surf->descriptorSize());
-        NUM_DESCRIPTORS += descriptors.size();
-        count++;
-        //cout<<count<<endl;
-    }
-    //change the capacity to actual size
-    features.shrink_to_fit();
-    //NIMAGE = (int)features.size();
-    //
-    //    cv::FileStorage fs("broken_images.yml", cv::FileStorage::WRITE);
-    //    fs << "Image File" << broken;
-    //    fs.release();
-}
+//void loadAll(vector<vector<vector<float> > > &features, vector<cv::String>& reference, cv::String trainFolder)
+//{
+//    features.clear();
+//    //    features.reserve(RESERVE);
+//    features.reserve(RESERVE);
+//    cv::Ptr<cv::xfeatures2d::SURF> surf = cv::xfeatures2d::SURF::create(HESSIAN, 4, 2, EXTENDED_SURF);
+//    
+//    
+//    cout << "Extracting SURF features..." << endl;
+//    DIR *dp;
+//    struct dirent *dirp;
+//    struct stat filestat;
+//    cv::String filepath;
+//    vector<cv::String> broken;
+//    
+//    
+//    //Asumming query images are in a folder
+//    dp = opendir(trainFolder.c_str());
+//    
+//    if (dp == NULL){
+//        cout << "Error (" << errno << "): Unable to open " << trainFolder << endl;
+//        return;
+//    }
+//    unsigned long count = 0;
+//    while ((dirp = readdir(dp)) && count < RESERVE) {
+//        filepath = trainFolder + "/" + dirp->d_name;
+//        
+//        if (stat(filepath.c_str(), &filestat)) continue;
+//        if(dirp->d_name[0] == '.') continue;
+//        
+//        cout << filepath << endl;
+//        cv::Mat image = cv::imread(filepath, CV_8U); //Use this if query images are passed directly
+//        if(image.data==NULL) {
+//            broken.push_back(dirp->d_name);
+//            continue;
+//        }
+//
+//        reference.push_back(dirp->d_name);
+//        cv::Mat mask;
+//        vector<cv::KeyPoint> keypoints;
+//        vector<float> descriptors;
+//        surf->detectAndCompute(image, mask, keypoints, descriptors);
+//        if(descriptors.empty()) continue;
+//        features.push_back(vector<vector<float> >());
+//        changeStructure(descriptors, features.back(), surf->descriptorSize());
+//        NUM_DESCRIPTORS += descriptors.size();
+//        count++;
+//        //cout<<count<<endl;
+//    }
+//    //change the capacity to actual size
+//    features.shrink_to_fit();
+//    //NIMAGE = (int)features.size();
+//    //
+//    //    cv::FileStorage fs("broken_images.yml", cv::FileStorage::WRITE);
+//    //    fs << "Image File" << broken;
+//    //    fs.release();
+//}
 // ----------------------------------------------------------------------------
 
 void changeStructure(const vector<float> &plain, vector<vector<float> > &out,
@@ -445,44 +444,44 @@ string toString(string str1, string str2){
 /**
  * Test the relationship between Hessian threshold and number of interest points
  */
-int SURF_test_case(string path)
-{
-    cout<<"Start!...";
-
-    cv::Mat img = imread( path, cv::IMREAD_GRAYSCALE );
-
-    
-    if( !img.data)
-    { std::cout<< " --(!) Error reading images " << std::endl; return -1; }
-    
-    //-- Step 1: Detect the keypoints using SURF Detector
-    //int minHessian = 400;
-    
-    fstream fs;
-    fs.open(TESTSUMMARY, ios_base::out | ios_base::trunc);
-    fs << "Hessian," <<"#ofKeyPoints"<<endl;
-    
-    for(int hessianT =1500; hessianT<1501; hessianT++){
-        cv::Ptr<cv::xfeatures2d::SURF> surf = cv::xfeatures2d::SURF::create(hessianT, 4, 2, EXTENDED_SURF);
-        std::vector<cv::KeyPoint> keypoints;
-        vector<float> descriptors;
-        surf->detectAndCompute(img, cv::Mat(), keypoints, descriptors);
-        
-
-        fs << hessianT << "," << (int)keypoints.size() << ","<<endl;
-        
-        //-- Draw keypoints
-        cv::Mat img_keypoints;
-        
-        drawKeypoints( img, keypoints, img_keypoints, cv::Scalar::all(-1), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
-
-        //-- Show detected (drawn) keypoints
-        imshow("Keypoints", img_keypoints );
-
-        cv::waitKey(0);
-//        return (int)keypoints.size();
-    }
-    cout<<"Done!"<<endl;
-    fs.close();
-    return 0;
-}
+//int SURF_test_case(string path)
+//{
+//    cout<<"Start!...";
+//
+//    cv::Mat img = imread( path, cv::IMREAD_GRAYSCALE );
+//
+//    
+//    if( !img.data)
+//    { std::cout<< " --(!) Error reading images " << std::endl; return -1; }
+//    
+//    //-- Step 1: Detect the keypoints using SURF Detector
+//    //int minHessian = 400;
+//    
+//    fstream fs;
+//    fs.open(TESTSUMMARY, ios_base::out | ios_base::trunc);
+//    fs << "Hessian," <<"#ofKeyPoints"<<endl;
+//    
+//    for(int hessianT =1500; hessianT<1501; hessianT++){
+//        cv::Ptr<cv::xfeatures2d::SURF> surf = cv::xfeatures2d::SURF::create(hessianT, 4, 2, EXTENDED_SURF);
+//        std::vector<cv::KeyPoint> keypoints;
+//        vector<float> descriptors;
+//        surf->detectAndCompute(img, cv::Mat(), keypoints, descriptors);
+//        
+//
+//        fs << hessianT << "," << (int)keypoints.size() << ","<<endl;
+//        
+//        //-- Draw keypoints
+//        cv::Mat img_keypoints;
+//        
+//        drawKeypoints( img, keypoints, img_keypoints, cv::Scalar::all(-1), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
+//
+//        //-- Show detected (drawn) keypoints
+//        imshow("Keypoints", img_keypoints );
+//
+//        cv::waitKey(0);
+////        return (int)keypoints.size();
+//    }
+//    cout<<"Done!"<<endl;
+//    fs.close();
+//    return 0;
+//}

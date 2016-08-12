@@ -25,15 +25,18 @@ double model (
     const double p1 = params(1);
     const double p2 = params(2);
     const double p3 = params(3);
+    const double p4 = params(4);
+
 
     
     const double i0 = input(0);
     const double i1 = input(1);
     const double i2 = input(2);
 
-    const double temp = p0*i0 + p1*i1 + p2*i2 + p3;
+    const double temp = p0*i0 + p1*pow(i1, i2) + p2*i1 + p3*i2 + p4;
+;
     
-    return temp*temp;
+    return temp*1;
 }
 
 // ----------------------------------------------------------------------------------------
@@ -63,6 +66,8 @@ parameter_vector residual_derivative (
     const double p1 = params(1);
     const double p2 = params(2);
     const double p3 = params(3);
+    const double p4 = params(4);
+
 
     
     
@@ -70,35 +75,37 @@ parameter_vector residual_derivative (
     const double i1 = data.first(1);
     const double i2 = data.first(2);
 
-    const double temp = p0*i0 + p1*i1 + p2*i2 + p3;
+    const double temp = p0*i0 + p1*pow(i1, i2) + p2*i1 + p3*i2 + p4;
     
-    der(0) = i0*2*temp;
-    der(1) = i1*2*temp;
-    der(2) = i2*2*temp;
-    der(3) = 2*temp;
+    der(0) = i0;
+    der(1) = pow(i1, i2);
+    der(2) = i1;
+    der(3) = i2;
+    der(4) = 1;
     
     return der;
 }
 
 // ----------------------------------------------------------------------------------------
 
-int test_case()
+int SLS()
 {
     try
     {
         // randomly pick a set of parameters to use in this example
-        const parameter_vector params = 10*randm(4,1);
+        const parameter_vector params = 10*randm(5,1);
         cout << "params: " << trans(params) << endl;
         
         
         // Now let's generate a bunch of input/output pairs according to our model.
         data data_samples;
-        string file_path = "/Users/liuhengyue/Desktop/debug_log.csv";
+        string file_path = "/Users/henry/Desktop/test_results.csv";
         load_data(file_path, data_samples);
+//        cout<<data_samples[0].first <<endl;
 //        input_vector input;
 //        for (int i = 0; i < 1000; ++i)
 //        {
-//            input = 10*randm(2,1);
+//            input = 10*randm(3,1);
 //            const double output = model(input, params);
 //            
 //            // save the pair

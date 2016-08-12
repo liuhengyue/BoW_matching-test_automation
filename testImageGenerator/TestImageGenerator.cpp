@@ -11,7 +11,7 @@
 void loadImages(cv::String folder);
 void modifyImage(Mat& input, Mat& output);
 string path = "/Users/henry/Downloads/out";
-string write_path = "/Users/henry/Downloads/test_images/";
+string write_path = "/Users/henry/Downloads/test_images2/";
 //int main( int argc, char** argv )
 //{
 ////    Mat input = imread(path);
@@ -58,10 +58,10 @@ void loadImages(cv::String folder)
 void modifyImage(Mat& input, Mat& output){
     Mat intermediate_output;
     //blur
-    blur(input, intermediate_output, Size(3,3));
+    blur(input, intermediate_output, Size(5,5));
     //noise
     Mat guassian_noise(intermediate_output.size(), intermediate_output.type());
-    randu(guassian_noise, 60, 30);
+    randu(guassian_noise, 80, 50);
     intermediate_output += guassian_noise;
     //skew
     Point2f srcTri[3];
@@ -74,8 +74,8 @@ void modifyImage(Mat& input, Mat& output){
     srcTri[1] = Point2f( intermediate_output.cols - 1, 0 );
     srcTri[2] = Point2f( 0, intermediate_output.rows - 1 );
     
-    dstTri[0] = Point2f( intermediate_output.cols*0.0, intermediate_output.rows*0.05 );
-    dstTri[1] = Point2f( intermediate_output.cols*0.95, intermediate_output.rows*0.05 );
+    dstTri[0] = Point2f( intermediate_output.cols*0.0, intermediate_output.rows*0.1 );
+    dstTri[1] = Point2f( intermediate_output.cols*0.85, intermediate_output.rows*0.05 );
     dstTri[2] = Point2f( intermediate_output.cols*0.05, intermediate_output.rows*0.9 );
     
     /// Get the Affine Transform
