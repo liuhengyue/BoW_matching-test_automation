@@ -26,7 +26,7 @@
 #include "IO_operations.hpp"
 #include <dlib/mlp.h>
 
-int main()
+int MLP()
 {
     // The mlp takes column vectors as input and gives column vectors as output.  The dlib::matrix
     // object is used to represent the column vectors. So the first thing we do here is declare
@@ -45,7 +45,7 @@ int main()
     // (which means it takes column vectors of length 2 as input) and 5 nodes in the first
     // hidden layer.  Note that the other 4 variables in the mlp's constructor are left at
     // their default values.
-    mlp::kernel_1a_c net(3,100,20);
+    mlp::kernel_1a_c net(3,5,3);
     
     // Now let's put some data into our sample and train on it.  We do this
     // by looping over 41*41 points and labeling them according to their
@@ -67,19 +67,22 @@ int main()
 //            }
 //        }
 //    }
-    string file_path = "/Users/liuhengyue/Desktop/debug_log.csv";
-    std::vector<mlp_vector> data;
+    string file_path = "/Users/liuhengyue/Desktop/test_results.csv";
+    std::vector<parameter_vector> data;
     load_data(file_path, data);
+    for(int i = 0; i < 1000; i++){
     for(auto entry: data){
-        sample(0) = entry(0);
+        sample(0) = entry(0);// /pow(10,8)
         sample(1) = entry(1);
         sample(2) = entry(2);
 //        sample(3) = entry(3);
 //        sample(4) = entry(4);
-        if(entry(3) > 0.06 && entry(4) > 0.03)
+        if(entry(3) > 0.6)
             net.train(sample,1);
         else net.train(sample, 0);
     }
+    }
+    
     
     
     // Now we have trained our mlp.  Let's see how well it did.
@@ -88,14 +91,15 @@ int main()
     
     // each of these statements prints out the output of the network given a particular sample.
     
-    sample(0) = 17157120;
-    sample(1) = 19;
+    sample(0) = 438901248;
+    sample(1) = 15;
     sample(2) = 3;
     cout << "This sample should be close to 0 and it is classified as a " << net(sample) << endl;
-    sample(0) = 17120;
-    sample(1) = 11;
-    sample(2) = 9;
-    cout << "This sample should be close to 1 and it is classified as a " << net(sample) << endl;
+    sample_type sample2;
+    sample2(0) = 45400;
+    sample2(1) = 130;
+    sample2(2) = 70;
+    cout << "This sample should be close to 1 and it is classified as a " << net(sample2) << endl;
 
     
 //    sample(0) = 13.123;
@@ -105,5 +109,6 @@ int main()
 //    sample(0) = 13.123;
 //    sample(1) = 0;
 //    cout << "This sample should be close to 0 and it is classified as a " << net(sample) << endl;
+    return 0;
 }
 
