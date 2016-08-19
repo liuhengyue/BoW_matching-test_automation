@@ -86,10 +86,10 @@ int SURF_test_case(string path);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 //file paths
-string TRAINFOLDER = "/Users/henry/Downloads/out";
-string TRAINFOLDER2 = "/Users/henry/Downloads/images";
-string TESTFOLDER = "/Users/henry/Downloads/test_images";
-string STOREPATH = "/Users/henry/Downloads/results/";
+string TRAINFOLDER = "/Users/henryliu/Downloads/out";
+string TRAINFOLDER2 = "/Users/henryliu/Downloads/images";
+string TESTFOLDER = "/Users/henryliu/Downloads/test_images2";
+string STOREPATH = "/Users/henryliu/Documents/DBoW2-master/demo/";
 string DBEXT = "kohls_db.yml.gz";
 string LABELEXT = "kohls_labels.yml";
 string VOCEXT = "kohls_voc.yml.gz";
@@ -114,16 +114,19 @@ int main()
     vector<vector<vector<float> > > features;
     vector<cv::String> reference;
     //for(RESERVE = 20; RESERVE < 571; RESERVE +=50){
-    for(RESERVE = 1500; RESERVE < 2001; RESERVE +=500){
+    for(RESERVE = 2500; RESERVE < 2501; RESERVE +=50){
         //Extract train features and build vocabulary -- trainning part
 //        loadFeatures(features, reference, TRAINFOLDER);
 //        for(K = 17; K < 21; K += 2){
 //            for (L = 2; L < 14; L ++){
-        loadFeatures(features, reference, TRAINFOLDER);
+        loadFeatures(features, reference, TRAINFOLDER, 2040);
+        loadFeatures(features, reference, TRAINFOLDER2);
         loadFeatures(features2, reference2, TESTFOLDER);
-        //loadFeatures(features, reference, TRAINFOLDER2);
-        for(K = 11; K < 21; K += 2){
-            for (L = 3; L < 14; L ++){
+        //
+//        for(K = 11; K < 21; K += 2){
+//            for (L = 3; L < 14; L ++){
+        for(K = 19; K < 20; K += 2){
+            for (L = 6; L < 7; L ++){
                 //check if the database exits
                 if(!file_exit(toString(STOREPATH, DBEXT))){
                     try {
@@ -158,7 +161,7 @@ int main()
 
 void loadFeatures(vector<vector<vector<float> > > &features, vector<cv::String>& reference, cv::String trainFolder, unsigned long num)
 {
-    features.clear();
+//   features.clear();
 //    features.reserve(RESERVE);
 //    features.reserve(RESERVE);
     cv::Ptr<cv::xfeatures2d::SURF> surf = cv::xfeatures2d::SURF::create(HESSIAN, 4, 2, EXTENDED_SURF);
@@ -378,12 +381,13 @@ void testDatabase(const vector<vector<vector<float> > > &features, vector<cv::St
     fstream logfs;
     if(!file_exit(STOREPATH+LOG)){
         logfs.open((STOREPATH+LOG), ios_base::out | ios_base::app);
-        logfs << "# of images, # of descriptors, Hessian, branch, depth, best matched image, best score, second best matched image, second best score, accuracy"<<endl;
+        logfs << "# of images, # of descriptors, Hessian, branch, depth, accuracy, mean, smallest, median, largest"<<endl;
     }
     else logfs.open((STOREPATH+LOG), ios_base::out | ios_base::app);
     
     //load database
     Surf64Database db;
+    vector<double> scores;
     db.load(toString(STOREPATH, DBEXT));
     vector<cv::String> reference;
     cv::FileStorage fs(toString(STOREPATH, LABELEXT), cv::FileStorage::READ);
@@ -418,6 +422,7 @@ void testDatabase(const vector<vector<vector<float> > > &features, vector<cv::St
 //            cout << reference[ret[4].Id] << endl;
 //            cout<<RESERVE << ", " << HESSIAN << ", " << K << ", " << L << ", " << reference[ret[0].Id] << ", " << ret[0].Score << ", " << reference[ret[1].Id] << ", " << ret[1].Score << endl;
             match++;
+            scores.push_back(ret[0].Score);
         }
         else{
             //cout<<"wrong match"<<endl;
@@ -430,7 +435,14 @@ void testDatabase(const vector<vector<vector<float> > > &features, vector<cv::St
     float acurracy = float(match)/features.size();
     cout << "Acurracy: " << acurracy << endl;
     //store results
-    logfs << RESERVE << ", " << NUM_DESCRIPTORS  << ", " << HESSIAN << ", " << K << ", " << L << ", " << reference[ret[0].Id] << ", " << ret[0].Score << ", " << reference[ret[1].Id] << ", " << ret[1].Score <<", "<< acurracy << endl;
+    sort(scores.begin(), scores.end());
+    double mean = accumulate(scores.begin(), scores.end(), 0.0) / scores.size();
+    double median = scores[scores.size() / 2];
+    double smallest = scores[0];
+    double largest = scores[scores.size() - 1];
+    //nth_element(scores.begin(), scores.begin()+scores.size()/2, scores.end());//median score
+    
+    logfs << RESERVE << ", " << NUM_DESCRIPTORS  << ", " << HESSIAN << ", " << K << ", " << L <<", "<< acurracy << ", "<< mean << ", "<< smallest << ", "<< median << ", "<< largest << endl;
     logfs.close();
     
 }
