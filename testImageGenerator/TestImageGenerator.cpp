@@ -10,13 +10,10 @@
 
 void loadImages(cv::String folder);
 void modifyImage(Mat& input, Mat& output);
-<<<<<<< HEAD
+
 string path = "/Users/henryliu/Downloads/out";
 string write_path = "/Users/henryliu/Downloads/test_images2/";
-=======
-string path = "/Users/henry/Downloads/out";
-string write_path = "/Users/henry/Downloads/test_images2/";
->>>>>>> ea975b0ce8862452b06a80e2a13621b9c36a1192
+
 //int main( int argc, char** argv )
 //{
 ////    Mat input = imread(path);
