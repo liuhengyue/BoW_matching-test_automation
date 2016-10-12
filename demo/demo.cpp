@@ -24,31 +24,34 @@
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/xfeatures2d/nonfree.hpp>
-
-
+#include <opencv2/calib3d.hpp>
+#include <opencv2/xfeatures2d.hpp>
+#include <opencv2/features2d.hpp>
+#include <opencv2/imgcodecs.hpp>
 using namespace DBoW2;
 using namespace DUtils;
 using namespace std;
+using namespace cv;
 
+// - - - - - - - - - -system parameters- - - - - - - - - - - - - - -
 
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-//system parameters
 unsigned long RESERVE = 0;//number of images to build vocabulary
 unsigned long NIMAGE = 0;//number of images in the train folder
 int HESSIAN = 400;
-int K = 8;
-int L = 3;
+int K = 10;
+int L = 7;
 size_t NUM_DESCRIPTORS = 0;
 // extended surf gives 128-dimensional vectors
 const bool EXTENDED_SURF = false;
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-void loadFeatures(vector<vector<vector<float> > > &features, vector<cv::String>& reference, cv::String trainFolder, unsigned long num = RESERVE);
+void loadFeatures(vector<vector<vector<float> > > &features, vector<cv::String>& reference, cv::String trainFolder, unsigned long lb = 0, unsigned long ub = RESERVE);
 void loadAll(vector<vector<vector<float> > > &features, vector<cv::String>& reference, cv::String trainFolder);
 
 void changeStructure(const vector<float> &plain, vector<vector<float> > &out,
                      int L);
 void testVocCreation(const vector<vector<vector<float> > > &features, vector<cv::String>& reference);
-void testDatabase(const vector<vector<vector<float> > > &features, vector<cv::String> test_reference);
+void testDatabase(const vector<vector<vector<float> > > &features, vector<cv::String> test_reference, string repo);
 inline bool file_exit (const std::string& name) {
     struct stat buffer;
     return (stat (name.c_str(), &buffer) == 0);
@@ -88,83 +91,72 @@ int SURF_test_case(string path);
 //file paths
 string TRAINFOLDER = "/Users/henryliu/Downloads/out";
 string TRAINFOLDER2 = "/Users/henryliu/Downloads/images";
-string TESTFOLDER = "/Users/henryliu/Downloads/test_images2";
-string STOREPATH = "/Users/henryliu/Documents/DBoW2-master/demo/";
+string TESTFOLDER = "/Users/henryliu/Downloads/testing_dataset";
+string STOREPATH = "/Users/henryliu/Documents/BoW_matching-test_automation/";
 
-//string STOREPATH = "/Users/henry/Downloads/results/";
 
-string DBEXT = "kohls_db.yml.gz";
-string LABELEXT = "kohls_labels.yml";
-string VOCEXT = "kohls_voc.yml.gz";
+string DBEXT = "db.yml.gz";
+string LABELEXT = "labels.yml";
+string VOCEXT = "voc.yml.gz";
 string LOG = "debug_log.csv";
+int db_index = 0;
 // ----------------------------------------------------------------------------
-//test case paths
-string IMAGEPATH = "/Users/henryliu/Downloads/cbir_test_folder/41772.3.jpg";
-string TESTSUMMARY = "/Users/henryliu/Documents/DBoW2-master/demo/hessian-#_of_interest_points-data.csv";
+
 
 int main()
 {
-//    SURF_test_case(IMAGEPATH);
 
+    string training_set[] = {TRAINFOLDER, TRAINFOLDER2};
     //reserve space for features
-    RESERVE = check_files_num(TRAINFOLDER);
+    RESERVE = 10;
 
     //test image
-    vector<vector<vector<float> > > features2;
-    vector<cv::String> reference2;
+    vector<vector<vector<float> > > test_features;
+    vector<cv::String> test_references;
     //extract test image features
-        //NIMAGE = check_files_num(TRAINFOLDER);
+
     vector<vector<vector<float> > > features;
     vector<cv::String> reference;
-    //for(RESERVE = 20; RESERVE < 571; RESERVE +=50){
 
-    for(RESERVE = 2500; RESERVE < 2501; RESERVE +=50){
+
  //Extract train features and build vocabulary -- trainning part
-//        loadFeatures(features, reference, TRAINFOLDER);
-//        for(K = 17; K < 21; K += 2){
-//            for (L = 2; L < 14; L ++){
-        loadFeatures(features, reference, TRAINFOLDER, 2040);
-        loadFeatures(features, reference, TRAINFOLDER2);
-        loadFeatures(features2, reference2, TESTFOLDER);
-        //
-//        for(K = 11; K < 21; K += 2){
-//            for (L = 3; L < 14; L ++){
-        for(K = 19; K < 20; K += 2){
-            for (L = 6; L < 7; L ++){
+    loadFeatures(test_features, test_references, TESTFOLDER);
+//    //vocabularies creation
+//    //2 databases
+   for(int i = 0; i < 2; i++){
+       
 
-                //check if the database exits
-                if(!file_exit(toString(STOREPATH, DBEXT))){
-                    try {
+        //check if the database exits
+        if(!file_exit(toString(STOREPATH, DBEXT))){
+            try {
+                loadFeatures(features, reference, training_set[i], 0, 100);
+                testVocCreation(features, reference);
 
-                        testVocCreation(features, reference);
-
-                    } catch (std::bad_alloc& ba) {
-                        //catch exception when the voc is too big
-                        std::cerr << "bad_alloc caught: " << ba.what() << '\n';
-                        break;
-                    }
-
-                }
-                //-- testing part
-
-                //Retreive results
-                testDatabase(features2, reference2);
-                
-                cout<<"Done"<<endl;
-
+            } catch (std::bad_alloc& ba) {
+                //catch exception when the voc is too big
+                std::cerr << "bad_alloc caught: " << ba.what() << '\n';
+                break;
             }
+
         }
-        NUM_DESCRIPTORS = 0;
+        //-- testing part
+
+        //Retreive results
+        testDatabase(test_features, test_references, training_set[i]);
+        
+        cout<<"Done"<<endl;
+
         //clean up
         features.clear();
         reference.clear();
+        db_index++;
     }
     return 0;
 }
 
 // ----------------------------------------------------------------------------
 
-void loadFeatures(vector<vector<vector<float> > > &features, vector<cv::String>& reference, cv::String trainFolder, unsigned long num)
+void loadFeatures(vector<vector<vector<float> > > &features, vector<cv::String>& reference, cv::String trainFolder, unsigned long lb, unsigned long ub)
 {
 
     cv::Ptr<cv::xfeatures2d::SURF> surf = cv::xfeatures2d::SURF::create(HESSIAN, 4, 2, EXTENDED_SURF);
@@ -175,7 +167,7 @@ void loadFeatures(vector<vector<vector<float> > > &features, vector<cv::String>&
     struct dirent *dirp;
     struct stat filestat;
     cv::String filepath;
-    vector<cv::String> broken;
+    //vector<cv::String> broken;
     
     
     //Asumming query images are in a folder
@@ -186,7 +178,7 @@ void loadFeatures(vector<vector<vector<float> > > &features, vector<cv::String>&
         return;
     }
     int counter = 0;
-    while ((dirp = readdir(dp)) && counter < num) {
+    while ((dirp = readdir(dp)) && counter < ub) {
         filepath = trainFolder + "/" + dirp->d_name;
         
         if (stat(filepath.c_str(), &filestat)) continue;
@@ -195,19 +187,21 @@ void loadFeatures(vector<vector<vector<float> > > &features, vector<cv::String>&
         //cout << float(counter+1)*100/RESERVE << "%" << endl;
         cv::Mat image = cv::imread(filepath, CV_8U); //Use this if query images are passed directly
         if(image.data==NULL) {
-            broken.push_back(dirp->d_name);
+            //broken.push_back(dirp->d_name);
             continue;
         }
 
-        reference.push_back(dirp->d_name);
-        cv::Mat mask;
-        vector<cv::KeyPoint> keypoints;
-        vector<float> descriptors;
-        surf->detectAndCompute(image, mask, keypoints, descriptors);
-        if(descriptors.empty()) continue;
-        features.push_back(vector<vector<float> >());
-        changeStructure(descriptors, features.back(), surf->descriptorSize());
-        NUM_DESCRIPTORS += descriptors.size();
+        if(counter > (int)lb - 1){
+            reference.push_back(dirp->d_name);
+            cv::Mat mask;
+            vector<cv::KeyPoint> keypoints;
+            vector<float> descriptors;
+            surf->detectAndCompute(image, mask, keypoints, descriptors);
+            if(descriptors.empty()) continue;
+            features.push_back(vector<vector<float> >());
+            changeStructure(descriptors, features.back(), surf->descriptorSize());
+            NUM_DESCRIPTORS += descriptors.size();
+        }
         counter++;
     }
     //change the capacity to actual size
@@ -219,64 +213,6 @@ void loadFeatures(vector<vector<vector<float> > > &features, vector<cv::String>&
     //    fs.release();
 }
 
-//void loadAll(vector<vector<vector<float> > > &features, vector<cv::String>& reference, cv::String trainFolder)
-//{
-//    features.clear();
-//    //    features.reserve(RESERVE);
-//    features.reserve(RESERVE);
-//    cv::Ptr<cv::xfeatures2d::SURF> surf = cv::xfeatures2d::SURF::create(HESSIAN, 4, 2, EXTENDED_SURF);
-//    
-//    
-//    cout << "Extracting SURF features..." << endl;
-//    DIR *dp;
-//    struct dirent *dirp;
-//    struct stat filestat;
-//    cv::String filepath;
-//    vector<cv::String> broken;
-//    
-//    
-//    //Asumming query images are in a folder
-//    dp = opendir(trainFolder.c_str());
-//    
-//    if (dp == NULL){
-//        cout << "Error (" << errno << "): Unable to open " << trainFolder << endl;
-//        return;
-//    }
-//    unsigned long count = 0;
-//    while ((dirp = readdir(dp)) && count < RESERVE) {
-//        filepath = trainFolder + "/" + dirp->d_name;
-//        
-//        if (stat(filepath.c_str(), &filestat)) continue;
-//        if(dirp->d_name[0] == '.') continue;
-//        
-//        cout << filepath << endl;
-//        cv::Mat image = cv::imread(filepath, CV_8U); //Use this if query images are passed directly
-//        if(image.data==NULL) {
-//            broken.push_back(dirp->d_name);
-//            continue;
-//        }
-//
-//        reference.push_back(dirp->d_name);
-//        cv::Mat mask;
-//        vector<cv::KeyPoint> keypoints;
-//        vector<float> descriptors;
-//        surf->detectAndCompute(image, mask, keypoints, descriptors);
-//        if(descriptors.empty()) continue;
-//        features.push_back(vector<vector<float> >());
-//        changeStructure(descriptors, features.back(), surf->descriptorSize());
-//        NUM_DESCRIPTORS += descriptors.size();
-//        count++;
-//        //cout<<count<<endl;
-//    }
-//    //change the capacity to actual size
-//    features.shrink_to_fit();
-//    //NIMAGE = (int)features.size();
-//    //
-//    //    cv::FileStorage fs("broken_images.yml", cv::FileStorage::WRITE);
-//    //    fs << "Image File" << broken;
-//    //    fs.release();
-//}
-// ----------------------------------------------------------------------------
 
 void changeStructure(const vector<float> &plain, vector<vector<float> > &out,
                      int L)
@@ -356,7 +292,7 @@ void testVocCreation(const vector<vector<vector<float> > > &features, vector<cv:
 }
 
 
-void testDatabase(const vector<vector<vector<float> > > &features, vector<cv::String> test_reference)
+void testDatabase(const vector<vector<vector<float> > > &features, vector<cv::String> references, string repo)
 {
 //    cout << "Creating a small database..." << endl;
 //    
@@ -411,32 +347,63 @@ void testDatabase(const vector<vector<vector<float> > > &features, vector<cv::St
         
         //cout << "Searching for Image " << i << ". " << ret << endl;
         if (ret.empty()){
-            //cout << "No image found" << endl;
+            cout << "No image found" << endl;
             //logfs << RESERVE << ", " << HESSIAN << ", " << K << ", " << L << ", " << "No image" << ", " << 0 << ", " << "No image" << ", " << 0 << ", " << 0 << endl;
             
         }
-        else if(reference[ret[0].Id] == test_reference[i])
+        else
         {
-            //cout << "Best matched Image: " << reference[ret[0].Id] << " with a score of "<< ret[0].Score << endl;
-//            cout << "More matches: " << endl;
-//           cout << reference[ret[1].Id]<< endl;
-//            cout << reference[ret[2].Id] << endl;
-//            cout << reference[ret[3].Id] << endl;
-//            cout << reference[ret[4].Id] << endl;
-//            cout<<RESERVE << ", " << HESSIAN << ", " << K << ", " << L << ", " << reference[ret[0].Id] << ", " << ret[0].Score << ", " << reference[ret[1].Id] << ", " << ret[1].Score << endl;
+            cout << "-----------------------------------------------------"<<endl;
+            cout << "For this image: " << references[i] << endl;
+            cout << "Best matched Image: " << reference[ret[0].Id] << " with a score of "<< ret[0].Score << endl;
+            cout << "More matches: " ;
+            cout << reference[ret[1].Id]<< ", ";
+            cout << reference[ret[2].Id] << ", ";
+            cout << reference[ret[3].Id] << ", ";
+            cout << reference[ret[4].Id] << endl;
+            cout << "-----------------------------------------------------"<<endl;
+            std::stringstream ss;
+            ss <<repo<< "/" << reference[ret[0].Id];
+            cv::Mat res_img = cv::imread(ss.str());
+            
+            std::stringstream ss2;
+            ss2 <<TESTFOLDER<< "/" << references[i];
+
+            cv::imshow("1st rank image", res_img);
+            cvWaitKey();
+            cv::Mat test_img = cv::imread(ss2.str());
+            cv::Ptr<cv::xfeatures2d::SURF> surf = cv::xfeatures2d::SURF::create(HESSIAN, 4, 2, EXTENDED_SURF);
+            vector<cv::Point2f> pt1, pt2;
+            vector<cv::KeyPoint> keypoints, keypoints2;
+            //-- Step 2: Calculate descriptors (feature vectors)
+
+            
+            Mat descriptors, descriptors2;
+            surf->detectAndCompute( res_img, Mat(), keypoints, descriptors );
+            surf->detectAndCompute( test_img, Mat(), keypoints2, descriptors2 );
+            FlannBasedMatcher matcher;
+            std::vector< DMatch > matches;
+            matcher.match( descriptors, descriptors2, matches);
+            for( int i = 0; i < matches.size(); i++ )
+            {
+                //-- Get the keypoints from the good matches
+                pt1.push_back( keypoints[ matches[i].queryIdx ].pt );
+                pt2.push_back( keypoints2[ matches[i].trainIdx ].pt );
+            }
+            cv::Mat H = cv::findHomography(pt1, pt2, CV_RANSAC);
+
+            cout << H << endl;
             match++;
             scores.push_back(ret[0].Score);
         }
-        else{
-            //cout<<"wrong match"<<endl;
-        }
+
     }
 //    cout << "Saving database... " << endl;
 //    
 //    db.save("/Users/henryliu/Documents/DBoW2-master/demo/kohls_db.yml.gz");
 //    cout << "...done!" << endl;
     float acurracy = float(match)/features.size();
-    cout << "Acurracy: " << acurracy << endl;
+    //cout << "Acurracy: " << acurracy << endl;
     //store results
     sort(scores.begin(), scores.end());
     double mean = accumulate(scores.begin(), scores.end(), 0.0) / scores.size();
@@ -452,52 +419,9 @@ void testDatabase(const vector<vector<vector<float> > > &features, vector<cv::St
 
 string toString(string str1, string str2){
     std::stringstream ss;
-    ss <<str1<<RESERVE<<"_"<< HESSIAN <<"_"<<K<<"_"<<L<<"_"<<str2;
+    ss <<str1<< db_index << "_"<<"kohls"<<"_"<<str2;
     return ss.str();
 }
 
 
-/**
- * Test the relationship between Hessian threshold and number of interest points
- */
-//int SURF_test_case(string path)
-//{
-//    cout<<"Start!...";
-//
-//    cv::Mat img = imread( path, cv::IMREAD_GRAYSCALE );
-//
-//    
-//    if( !img.data)
-//    { std::cout<< " --(!) Error reading images " << std::endl; return -1; }
-//    
-//    //-- Step 1: Detect the keypoints using SURF Detector
-//    //int minHessian = 400;
-//    
-//    fstream fs;
-//    fs.open(TESTSUMMARY, ios_base::out | ios_base::trunc);
-//    fs << "Hessian," <<"#ofKeyPoints"<<endl;
-//    
-//    for(int hessianT =1500; hessianT<1501; hessianT++){
-//        cv::Ptr<cv::xfeatures2d::SURF> surf = cv::xfeatures2d::SURF::create(hessianT, 4, 2, EXTENDED_SURF);
-//        std::vector<cv::KeyPoint> keypoints;
-//        vector<float> descriptors;
-//        surf->detectAndCompute(img, cv::Mat(), keypoints, descriptors);
-//        
-//
-//        fs << hessianT << "," << (int)keypoints.size() << ","<<endl;
-//        
-//        //-- Draw keypoints
-//        cv::Mat img_keypoints;
-//        
-//        drawKeypoints( img, keypoints, img_keypoints, cv::Scalar::all(-1), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
-//
-//        //-- Show detected (drawn) keypoints
-//        imshow("Keypoints", img_keypoints );
-//
-//        cv::waitKey(0);
-////        return (int)keypoints.size();
-//    }
-//    cout<<"Done!"<<endl;
-//    fs.close();
-//    return 0;
-//}
+
