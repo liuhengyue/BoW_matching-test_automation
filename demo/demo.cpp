@@ -23,6 +23,7 @@
 // OpenCV
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
 #include <opencv2/xfeatures2d/nonfree.hpp>
 #include <opencv2/calib3d.hpp>
 #include <opencv2/xfeatures2d.hpp>
@@ -35,7 +36,7 @@ using namespace cv;
 
 // - - - - - - - - - -system parameters- - - - - - - - - - - - - - -
 
-unsigned long RESERVE = 0;//number of images to build vocabulary
+unsigned long RESERVE = 10000;//number of images to build vocabulary
 unsigned long NIMAGE = 0;//number of images in the train folder
 int HESSIAN = 400;
 int K = 10;
@@ -52,6 +53,7 @@ void changeStructure(const vector<float> &plain, vector<vector<float> > &out,
                      int L);
 void testVocCreation(const vector<vector<vector<float> > > &features, vector<cv::String>& reference);
 void testDatabase(const vector<vector<vector<float> > > &features, vector<cv::String> test_reference, string repo);
+bool verifyGeometric(Mat img1, Mat img2);
 inline bool file_exit (const std::string& name) {
     struct stat buffer;
     return (stat (name.c_str(), &buffer) == 0);
@@ -202,6 +204,7 @@ void loadFeatures(vector<vector<vector<float> > > &features, vector<cv::String>&
             changeStructure(descriptors, features.back(), surf->descriptorSize());
             NUM_DESCRIPTORS += descriptors.size();
         }
+        cout << counter << endl;
         counter++;
     }
     //change the capacity to actual size
@@ -357,42 +360,26 @@ void testDatabase(const vector<vector<vector<float> > > &features, vector<cv::St
             cout << "For this image: " << references[i] << endl;
             cout << "Best matched Image: " << reference[ret[0].Id] << " with a score of "<< ret[0].Score << endl;
             cout << "More matches: " ;
-            cout << reference[ret[1].Id]<< ", ";
-            cout << reference[ret[2].Id] << ", ";
-            cout << reference[ret[3].Id] << ", ";
-            cout << reference[ret[4].Id] << endl;
-            cout << "-----------------------------------------------------"<<endl;
-            std::stringstream ss;
-            ss <<repo<< "/" << reference[ret[0].Id];
-            cv::Mat res_img = cv::imread(ss.str());
-            
             std::stringstream ss2;
             ss2 <<TESTFOLDER<< "/" << references[i];
-
-            cv::imshow("1st rank image", res_img);
-            cvWaitKey();
             cv::Mat test_img = cv::imread(ss2.str());
-            cv::Ptr<cv::xfeatures2d::SURF> surf = cv::xfeatures2d::SURF::create(HESSIAN, 4, 2, EXTENDED_SURF);
-            vector<cv::Point2f> pt1, pt2;
-            vector<cv::KeyPoint> keypoints, keypoints2;
-            //-- Step 2: Calculate descriptors (feature vectors)
-
             
-            Mat descriptors, descriptors2;
-            surf->detectAndCompute( res_img, Mat(), keypoints, descriptors );
-            surf->detectAndCompute( test_img, Mat(), keypoints2, descriptors2 );
-            FlannBasedMatcher matcher;
-            std::vector< DMatch > matches;
-            matcher.match( descriptors, descriptors2, matches);
-            for( int i = 0; i < matches.size(); i++ )
-            {
-                //-- Get the keypoints from the good matches
-                pt1.push_back( keypoints[ matches[i].queryIdx ].pt );
-                pt2.push_back( keypoints2[ matches[i].trainIdx ].pt );
-            }
-            cv::Mat H = cv::findHomography(pt1, pt2, CV_RANSAC);
+            for(int j = 0; j < ret.size(); j++){
+                cout << reference[ret[j].Id]<< ", ";
+                std::stringstream ss;
+                ss <<repo<< "/" << reference[ret[j].Id];
+                cv::Mat res_img = cv::imread(ss.str());
+                
 
-            cout << H << endl;
+                if(verifyGeometric(res_img, test_img)){
+                    imshow("query", test_img);
+                    imshow("match", res_img);
+                    waitKey();
+                }
+                cout << endl;
+            }
+            
+            cout << endl << "-----------------------------------------------------"<<endl;
             match++;
             scores.push_back(ret[0].Score);
         }
@@ -415,6 +402,69 @@ void testDatabase(const vector<vector<vector<float> > > &features, vector<cv::St
     logfs << RESERVE << ", " << NUM_DESCRIPTORS  << ", " << HESSIAN << ", " << K << ", " << L <<", "<< acurracy << ", "<< mean << ", "<< smallest << ", "<< median << ", "<< largest << endl;
     logfs.close();
     
+}
+bool verifyGeometric(Mat img1, Mat img2){
+    cv::Ptr<cv::xfeatures2d::SURF> surf = cv::xfeatures2d::SURF::create(HESSIAN, 4, 2, EXTENDED_SURF);
+    vector<cv::Point2f> pt1, pt2, projected_pt;
+    vector<cv::KeyPoint> keypoints, keypoints2;
+    //-- Step 2: Calculate descriptors (feature vectors)
+    
+    
+    Mat descriptors, descriptors2;
+    Mat mask;
+    surf->detectAndCompute( img1, Mat(), keypoints, descriptors );
+    surf->detectAndCompute( img2, Mat(), keypoints2, descriptors2 );
+    FlannBasedMatcher matcher;
+    std::vector< DMatch > matches;
+    matcher.match( descriptors, descriptors2, matches);
+    
+    //-- Quick calculation of max and min distances between keypoints
+    double max_dist = 0; double min_dist = 100;
+    for( int i = 0; i < matches.size(); i++ )
+    { double dist = matches[i].distance;
+        if( dist < min_dist ) min_dist = dist;
+        if( dist > max_dist ) max_dist = dist;
+    }
+    //-- Draw only "good" matches (i.e. whose distance is less than 3*min_dist )
+    std::vector< DMatch > good_matches;
+    
+    for( int i = 0; i < matches.size(); i++ )
+    { if( matches[i].distance <= 3*min_dist )
+    { good_matches.push_back( matches[i]); }
+    }
+    for( int i = 0; i < good_matches.size(); i++ )
+    {
+        //-- Get the keypoints from the good matches
+        pt1.push_back( keypoints[ good_matches[i].queryIdx ].pt );
+        pt2.push_back( keypoints2[ good_matches[i].trainIdx ].pt );
+    }
+    cv::Mat H = cv::findHomography(pt1, pt2, CV_RANSAC, 1, mask);
+    float t = 0;
+    if(sum(H)[0] != 0){
+        int num_matched_points = 0;
+        perspectiveTransform(pt1, projected_pt, H);
+        Mat img_matches = Mat::zeros(img2.rows, img2.cols, CV_8UC1);
+        //img2.copyTo(img_matches);
+        for(Point2f pt : projected_pt){
+
+            if(unsigned(pt.x) < (img2.cols) && unsigned(pt.y) < (img2.rows)){
+                img_matches.at<uchar>(unsigned(pt.y), unsigned(pt.x)) = 1;
+            }
+        }
+        num_matched_points = sum(img_matches)[0];
+    //    drawMatches(img1, keypoints, img2, keypoints2,
+    //                good_matches, img_matches, Scalar::all(-1), Scalar::all(-1),
+    //                std::vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
+        
+    //
+        t = (float)num_matched_points/(projected_pt.size()+1);
+//        cout << t << " " << num_matched_points << " " << projected_pt.size() << endl;
+//        if(t > 0.1){
+//            imshow("match", img_matches);
+//            waitKey();
+//        }
+    }
+    return t > 0.8 && projected_pt.size() > 80 ? true : false;
 }
 
 string toString(string str1, string str2){
