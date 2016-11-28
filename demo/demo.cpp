@@ -110,7 +110,7 @@ int main()
 
     string training_set[] = {TRAINFOLDER, TRAINFOLDER2};
     //reserve space for features
-    RESERVE = 10;
+    //RESERVE = 10;
 
     //test image
     vector<vector<vector<float> > > test_features;
@@ -131,7 +131,7 @@ int main()
         //check if the database exits
         if(!file_exit(toString(STOREPATH, DBEXT))){
             try {
-                loadFeatures(features, reference, training_set[i], 0, 100);
+                loadFeatures(features, reference, training_set[i], 0, RESERVE);
                 testVocCreation(features, reference);
 
             } catch (std::bad_alloc& ba) {
@@ -469,7 +469,7 @@ bool verifyGeometric(Mat img1, Mat img2){
 
 string toString(string str1, string str2){
     std::stringstream ss;
-    ss <<str1<< db_index << "_"<<"kohls"<<"_"<<str2;
+    ss <<str1<< db_index << "_"<<RESERVE<<"_"<<str2;
     return ss.str();
 }
 
